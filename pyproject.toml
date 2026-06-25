@@ -1,0 +1,58 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.backends.legacy:build"
+
+[project]
+name = "agentbreak"
+version = "0.1.0"
+description = "Workflow-level security scanner for multi-agent AI systems"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [{ name = "Jaleed Ahmad", email = "jaleed@agentbreak.dev" }]
+keywords = ["ai", "security", "agents", "red-team", "langchain", "langgraph"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Topic :: Security",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+]
+
+dependencies = [
+    "pydantic>=2.0",
+    "pyyaml>=6.0",
+    "rich>=13.0",       # terminal output
+    "click>=8.1",       # CLI
+    "jinja2>=3.1",      # HTML report templating
+]
+
+[project.optional-dependencies]
+langgraph = ["langgraph>=0.2", "langchain-core>=0.2"]
+crewai   = ["crewai>=0.51"]
+dev      = ["pytest>=8.0", "pytest-cov", "ruff", "mypy"]
+
+[project.scripts]
+agentbreak = "agentbreak.cli:main"
+
+[project.urls]
+Homepage   = "https://github.com/JaleedAhmad/agentbreak"
+Issues     = "https://github.com/JaleedAhmad/agentbreak/issues"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["agentbreak*"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.mypy]
+python_version = "3.10"
+strict = false
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts   = "-v --tb=short"
