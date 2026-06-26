@@ -1,87 +1,165 @@
-<div align="center">
-  <h1>🛡️ AgentBreak</h1>
-  <p><b>Workflow-level security scanner for multi-agent AI systems.</b></p>
+# AgentBreak
 
-  [![Python Versions](https://img.shields.io/badge/Python-3.10%20%7C%203.11%20%7C%203.12-blue.svg)](https://www.python.org/)
-  [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-</div>
+Workflow-level security scanner for multi-agent AI systems.
+
+AgentBreak is not a model scanner. It understands the graph of tools your agent can call, finds every chain from an untrusted input source to a sensitive action sink, and proves the exploit with a full tool-call trace. Built for developers who ship LangGraph, CrewAI, and AutoGen agents and want to know their attack surface before someone else finds it.
 
 ---
 
-## 📖 Overview
+## The problem
 
-**AgentBreak** is a specialized security scanning framework designed to audit multi-agent AI workflows. Unlike traditional security tools that test single endpoints, AgentBreak parses entire AI orchestration workflows (such as those built with LangGraph or CrewAI) and statically/dynamically analyzes them for injection vulnerabilities, unauthorized tool executions, and data leaks.
+Most production agents have three things simultaneously: access to external data (emails, web, files), an LLM that processes that data without sanitisation, and tools that take irreversible actions (send email, write file, call API). Existing scanners (garak, promptfoo) test models in isolation — they don't model what happens when a malicious payload injected through a web search result propagates through three tool calls and triggers an outbound email. AgentBreak tests the workflow, not the model. 
 
-## ✨ Key Features
+---
 
-- **Multi-Framework Parsers**: Natively parses `LangGraph`, `CrewAI`, or generic YAML/JSON workflow schemas.
-- **Graph-Based Attack Pathfinding**: Employs Depth-First Search (DFS) over a unified `ToolGraph` to map out all possible exploit paths.
-- **Dynamic Payload Generation**: Automatically generates context-aware injection payloads based on predefined severity and trust levels.
-- **Comprehensive Reporting**: Outputs detailed traces in `JSONL` and rich, visual timelines in `HTML` (with SVG graphs).
-- **Extensible Architecture**: Easily add new parsers for other multi-agent frameworks or new security scanners.
-
-## 🏗️ Architecture
-
-AgentBreak operates in a pipeline:
-
-1. **Parsers**: Ingests your AI framework definitions and converts them into a standardized `ToolGraph`.
-2. **Scanner Engine**: Traverses the `ToolGraph` to find vulnerable nodes and edges, applying simulated attacks using dynamically generated payloads.
-3. **Core Models**: Shared schema models governing attack paths, trust boundaries, and enums.
-4. **Output/Reporting**: Generates the final audit reports.
-
-![Architecture Diagram](agentbreak_project_structure.svg)
-
-## 📂 Project Structure
+## Demo
 
 ```text
-agentbreak/
-├── agentbreak/                  # Core package
-│   ├── models/                  # Pydantic schemas and Enums (ToolGraph, AttackPath, etc.)
-│   ├── parsers/                 # Framework parsers (LangGraph, CrewAI, JSON/YAML)
-│   ├── scanner/                 # Engine (PathFinder, Payload Generator, Executor)
-│   └── output/                  # Reporters (JSONL, HTML)
-├── cli.py                       # CLI Entrypoint
-├── pyproject.toml               # Build and Dependency definitions
-└── README.md                    # You are here!
+AgentBreak scan — Email Assistant Agent
+ToolGraph: 6 nodes, 5 edges, 3 sources, 2 sinks
+
+Found Attack Paths
+┌───┬─────────────────────────────────────────────────────────┬────────────┐
+│ # │ Path Chain                                              │ Sink Type  │
+├───┼─────────────────────────────────────────────────────────┼────────────┤
+│ 1 │ fetch_emails → summarise_and_plan → draft_reply →      │ email_send │
+│   │ send_email                                              │            │
+│ 2 │ web_search → summarise_and_plan → save_to_notes        │ file_write │
+│ 3 │ fetch_emails → summarise_and_plan → save_to_notes      │ file_write │
+│ 4 │ web_search → summarise_and_plan → draft_reply →        │ email_send │
+│   │ send_email                                              │            │
+│ 5 │ summarise_and_plan → draft_reply → send_email          │ email_send │
+└───┴─────────────────────────────────────────────────────────┴────────────┘
+
+Scan Results
+┌──────────────────────────────────────┬──────────────────────────────────┬───────────┬──────────┐
+│ Path Chain                           │ Payload Name                     │ Exploited │ Severity │
+├──────────────────────────────────────┼──────────────────────────────────┼───────────┼──────────┤
+│ fetch_emails → ... → send_email      │ indirect_injection_email_exfil   │     ✓     │ HIGH     │
+│ fetch_emails → ... → send_email      │ search_result_prompt_injection   │     ✓     │ HIGH     │
+│ web_search → ... → save_to_notes     │ web_content_file_write           │     ✓     │ HIGH     │
+│ web_search → ... → send_email        │ search_result_prompt_injection   │     ✓     │ HIGH     │
+│ summarise_and_plan → ... → send_email│ generic_override_fallback        │     ✓     │ MEDIUM   │
+└──────────────────────────────────────┴──────────────────────────────────┴───────────┴──────────┘
+
+Report written to agentbreak-report/
+Exit code: 1 (HIGH findings present — fails CI/CD gate)
 ```
 
-## ⚙️ Installation
+---
 
-AgentBreak requires **Python 3.10+**.
-
-### Basic Installation
-Clone the repository and install it directly:
-```bash
-git clone https://github.com/JaleedAhmad/agentbreak.git
-cd agentbreak
-pip install -e .
-```
-
-### Optional Dependencies
-Depending on the AI framework you are scanning, install the optional dependencies:
-```bash
-# To scan LangGraph applications
-pip install -e ".[langgraph]"
-
-# To scan CrewAI applications
-pip install -e ".[crewai]"
-
-# For development and testing
-pip install -e ".[dev]"
-```
-
-## 🚀 Usage
-
-> **Note**: AgentBreak is currently in active development. Detailed usage examples will be provided once the CLI is finalized.
-
-Currently, you can invoke the primary entrypoint (once implemented) like this:
+## Install
 
 ```bash
-agentbreak --help
+pip install agentbreak
 ```
 
-*More examples on scanning specific graphs and configuring policies will be added soon.*
+For LangGraph support:
+```bash
+pip install agentbreak[langgraph]
+```
 
-## 📝 License
+For CrewAI support:
+```bash
+pip install agentbreak[crewai]
+```
 
-This project is licensed under the MIT License - see the `LICENSE` file for details.
+---
+
+## Usage
+
+Three modes:
+
+1. Schema mode (fastest, no framework dependency):
+```bash
+agentbreak scan --schema tools.yaml
+```
+
+2. LangGraph mode:
+```bash
+agentbreak scan --langgraph my_agent.py
+```
+
+3. CI/CD mode (exits 1 on HIGH or CRITICAL findings):
+```bash
+agentbreak scan --schema tools.yaml --output ./security-report/
+```
+
+---
+
+## Tool schema format
+
+```yaml
+meta:
+  name: "Sample Agent"
+  framework: "custom" # Identifies the parsing framework context
+
+tools:
+  - name: web_scraper
+    description: "Fetches text from a given URL." # Description helps contextualize the node
+    input_trust: external # Data originates from outside the system boundary (e.g. internet)
+    sinks: [] # This tool performs no dangerous actions
+
+  - name: planner_llm
+    description: "Analyzes scraped text and decides what to do."
+    input_trust: untrusted # Data comes from an external source but via another tool
+    sinks: []
+
+  - name: send_email
+    description: "Dispatches an email via SMTP."
+    input_trust: trusted # Only accepts developer-crafted or heavily sanitized text
+    sinks:
+      - email_send # An irreversible outbound action that could exfiltrate data
+
+  - name: save_log
+    description: "Appends the operation result to a local file."
+    input_trust: trusted
+    sinks:
+      - file_write # Modifies the local file system
+
+edges:
+  # Explicitly defines the data flow between tools
+  - source: web_scraper
+    target: planner_llm
+  - source: planner_llm
+    target: send_email
+  - source: planner_llm
+    target: save_log
+```
+
+---
+
+## What AgentBreak tests
+
+| Attack Template | Source Type | Sink Type |
+| :--- | :--- | :--- |
+| `indirect_injection_email_exfil` | EXTERNAL | EMAIL_SEND |
+| `web_content_file_write` | EXTERNAL | FILE_WRITE |
+| `document_code_exec` | EXTERNAL | CODE_EXEC, SHELL |
+| `user_input_db_injection` | UNTRUSTED, EXTERNAL | DB_WRITE |
+| `email_body_api_exfil` | EXTERNAL | API_CALL |
+| `memory_poisoning_via_web` | EXTERNAL | MEMORY_WRITE |
+| `search_result_prompt_injection` | EXTERNAL | EMAIL_SEND, API_CALL |
+| `shell_injection_via_filename` | UNTRUSTED, EXTERNAL | SHELL, CODE_EXEC |
+
+---
+
+## What it does not test
+
+- Live execution against a real LLM (mock mode only in V1)
+- Runtime guardrail bypass (this is pre-deployment static analysis)
+- Vulnerabilities in the model itself (use garak for that)
+
+---
+
+## Roadmap
+
+* **V1 (now)**: Schema-based scanning, 8 payload templates, mock execution, JSONL + HTML reports
+* **V2**: LangGraph and CrewAI native parsers, live execution mode (opt-in)
+* **V3**: CI/CD GitHub Action, hosted scan API, compliance report export (OWASP Agentic Top 10)
+
+---
+
+## Author
+
+Jaleed Ahmad ([GitHub](https://github.com/JaleedAhmad))
