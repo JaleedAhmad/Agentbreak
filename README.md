@@ -50,21 +50,23 @@ Exit code: 1 (HIGH findings present — fails CI/CD gate)
 
 ## Install
 
-Since AgentBreak is currently in active development, install it directly from GitHub:
+Because AgentBreak is a standalone CLI tool, we highly recommend installing it using **[`pipx`](https://pipx.pypa.io/)** to avoid PEP 668 `externally-managed-environment` errors on modern Linux systems (like Debian/Ubuntu).
 
 ```bash
-pip install git+https://github.com/JaleedAhmad/Agentbreak.git
+pipx install git+https://github.com/JaleedAhmad/Agentbreak.git
 ```
 
 For LangGraph support:
 ```bash
-pip install "agentbreak[langgraph] @ git+https://github.com/JaleedAhmad/Agentbreak.git"
+pipx install "agentbreak[langgraph] @ git+https://github.com/JaleedAhmad/Agentbreak.git"
 ```
 
 For CrewAI support:
 ```bash
-pip install "agentbreak[crewai] @ git+https://github.com/JaleedAhmad/Agentbreak.git"
+pipx install "agentbreak[crewai] @ git+https://github.com/JaleedAhmad/Agentbreak.git"
 ```
+
+*(Alternatively, if you prefer `pip`, you must create and activate a virtual environment first: `python3 -m venv venv && source venv/bin/activate`, and then run `pip install ...`)*
 
 Alternatively, for local development:
 ```bash
