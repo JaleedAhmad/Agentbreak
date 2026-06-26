@@ -50,18 +50,27 @@ Exit code: 1 (HIGH findings present — fails CI/CD gate)
 
 ## Install
 
+Since AgentBreak is currently in active development, install it directly from GitHub:
+
 ```bash
-pip install agentbreak
+pip install git+https://github.com/JaleedAhmad/Agentbreak.git
 ```
 
 For LangGraph support:
 ```bash
-pip install agentbreak[langgraph]
+pip install "agentbreak[langgraph] @ git+https://github.com/JaleedAhmad/Agentbreak.git"
 ```
 
 For CrewAI support:
 ```bash
-pip install agentbreak[crewai]
+pip install "agentbreak[crewai] @ git+https://github.com/JaleedAhmad/Agentbreak.git"
+```
+
+Alternatively, for local development:
+```bash
+git clone https://github.com/JaleedAhmad/Agentbreak.git
+cd Agentbreak
+pip install -e ".[dev]"
 ```
 
 ---
