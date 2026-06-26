@@ -211,6 +211,12 @@ Jaleed Ahmad ([GitHub](https://github.com/JaleedAhmad))
 
 ---
 
+## Tags
+
+`ai-security` `llm` `multi-agent` `langchain` `langgraph` `crewai` `red-team` `prompt-injection` `agentic-ai` `security-tools`
+
+---
+
 ## License
 
 This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
