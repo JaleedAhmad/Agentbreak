@@ -52,6 +52,14 @@ Exit code: 1 (HIGH findings present — fails CI/CD gate)
 
 Because AgentBreak is a standalone CLI tool, we highly recommend installing it using **[`pipx`](https://pipx.pypa.io/)** to avoid PEP 668 `externally-managed-environment` errors on modern Linux systems (like Debian/Ubuntu).
 
+If you don't have `pipx` installed, install it and configure your path first:
+```bash
+sudo apt install pipx
+pipx ensurepath
+# You may need to restart your terminal or run `source ~/.bashrc` here
+```
+
+Then install AgentBreak:
 ```bash
 pipx install git+https://github.com/JaleedAhmad/Agentbreak.git
 ```
@@ -68,10 +76,12 @@ pipx install "agentbreak[crewai] @ git+https://github.com/JaleedAhmad/Agentbreak
 
 *(Alternatively, if you prefer `pip`, you must create and activate a virtual environment first: `python3 -m venv venv && source venv/bin/activate`, and then run `pip install ...`)*
 
-Alternatively, for local development:
+For local development from source:
 ```bash
 git clone https://github.com/JaleedAhmad/Agentbreak.git
 cd Agentbreak
+python3 -m venv venv
+source venv/bin/activate
 pip install -e ".[dev]"
 ```
 
