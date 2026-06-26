@@ -4,6 +4,8 @@ Workflow-level security scanner for multi-agent AI systems. *(Tested & Verified 
 
 AgentBreak is not a model scanner. It understands the graph of tools your agent can call, finds every chain from an untrusted input source to a sensitive action sink, and proves the exploit with a full tool-call trace. Built for developers who ship LangGraph, CrewAI, and AutoGen agents and want to know their attack surface before someone else finds it.
 
+**📖 Read the launch post:** [I built a tool that found my LangGraph email agent could be hijacked](https://dev.to/jaleedahmad/-i-built-a-tool-that-found-my-langgraph-email-agent-could-be-hijacked-to-forward-the-entire-inbox-3ik7)
+
 ---
 
 ## The problem
