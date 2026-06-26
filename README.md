@@ -66,6 +66,28 @@ pip install agentbreak[crewai]
 
 ---
 
+## Project Structure
+
+```text
+agentbreak/
+├── agentbreak/                  # Core package
+│   ├── cli.py                   # CLI entry point
+│   ├── models/                  # Core data models (ToolGraph, AttackPath)
+│   ├── output/                  # JSONL and HTML report generators
+│   ├── parsers/                 # Framework parsers (LangGraph, CrewAI, Schema)
+│   └── scanner/                 # Analysis engine
+│       ├── executor.py          # Execution and severity assignment
+│       ├── path_finder.py       # Graph traversal and path extraction
+│       └── payload_generator.py # Adversarial payload injection templates
+├── examples/                    # Example schemas
+│   └── email_agent.yaml
+├── tests/                       # Pytest test suite
+├── pyproject.toml               # Build configuration
+└── requirements.txt             # Dependency definitions
+```
+
+---
+
 ## Usage
 
 Three modes:
