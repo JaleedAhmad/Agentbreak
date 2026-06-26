@@ -1,5 +1,7 @@
 # AgentBreak
 
+![Python](https://img.shields.io/badge/Python-3.10%2B-blue?logo=python&logoColor=white) ![Security](https://img.shields.io/badge/Security-Red--Teaming-red) ![Agents](https://img.shields.io/badge/Agents-Multi--Agent-purple) ![Frameworks](https://img.shields.io/badge/Frameworks-LangGraph%20%7C%20CrewAI-orange) ![License](https://img.shields.io/badge/License-MIT-brightgreen)
+
 Workflow-level security scanner for multi-agent AI systems. *(Tested & Verified on Ubuntu)*
 
 AgentBreak is not a model scanner. It understands the graph of tools your agent can call, finds every chain from an untrusted input source to a sensitive action sink, and proves the exploit with a full tool-call trace. Built for developers who ship LangGraph, CrewAI, and AutoGen agents and want to know their attack surface before someone else finds it.
@@ -208,12 +210,6 @@ edges:
 ## Author
 
 Jaleed Ahmad ([GitHub](https://github.com/JaleedAhmad))
-
----
-
-## Tags
-
-`ai-security` `llm` `multi-agent` `langchain` `langgraph` `crewai` `red-team` `prompt-injection` `agentic-ai` `security-tools`
 
 ---
 
