@@ -71,8 +71,11 @@ def scan(schema, output, external_only, max_depth, no_html):
     path_table.add_column("Sink Type")
     
     for i, p in enumerate(paths, 1):
-        sink = p.target_sink
-        sink_label = sink.highest_risk_sink().value if sink and sink.highest_risk_sink() else "Unknown"
+        sink_label = "Unknown"
+        if p.target_sink:
+            highest_risk = p.target_sink.highest_risk_sink()
+            if highest_risk:
+                sink_label = highest_risk.value
         path_table.add_row(str(i), p.describe(), sink_label)
         
     console.print(path_table)
