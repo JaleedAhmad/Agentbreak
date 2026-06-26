@@ -1,0 +1,33 @@
+meta:
+  name: "My email assistant"
+  framework: "custom"
+
+tools:
+  - name: fetch_emails
+    description: "Fetches unread emails from Gmail inbox"
+    input_trust: external
+    sinks: []
+
+  - name: summarise_and_plan
+    description: "Summarises email content using an LLM and plans a response"
+    input_trust: untrusted
+    sinks: []
+
+  - name: draft_reply
+    description: "Drafts a reply based on the plan"
+    input_trust: untrusted
+    sinks: []
+
+  - name: send_email
+    description: "Sends an email reply"
+    input_trust: trusted
+    sinks:
+      - email_send
+
+edges:
+  - source: fetch_emails
+    target: summarise_and_plan
+  - source: summarise_and_plan
+    target: draft_reply
+  - source: draft_reply
+    target: send_email
