@@ -762,9 +762,9 @@ Everything in this section exists, is tested, and is pushed to the repository.
 ### V2 — Live Execution + Smart Payloads
 
 **Live execution mode:**
-Add an `--live` flag to the executor that actually runs the target agent against payloads using a real LLM backend. Default backend: Groq (free tier, Llama 3.1 8B). The agent is run in an isolated subprocess. Tool calls are intercepted via a proxy wrapper that records inputs/outputs before forwarding them.
+Add an `--live` flag to the executor that runs the attack paths using a real LLM backend. Default backend: Groq (Llama 3 8B).
 
-This confirms that a path is exploitable in practice, not just theoretically reachable.
+*Note: In V2, live execution is a pragmatic simulation approach. Rather than spinning up the agent in a subprocess and intercepting true Python tool calls, the Executor uses the LLM to realistically simulate both the agent's reasoning and the output of its tools step-by-step. This confirms that a path is exploitable in practice using a live model, acting as a bridge towards true agent interception in the future.*
 
 **LLM-generated payload variants:**
 Add a `--smart-payloads` flag that uses Gemini Flash (free tier) to generate context-aware injection strings tailored to each tool's specific description. A `fetch_customer_records` tool gets a payload that mentions customer records. A `search_arxiv` tool gets a payload disguised as a research abstract. This dramatically increases the realism and coverage of the scanner.
@@ -773,13 +773,14 @@ Add a `--smart-payloads` flag that uses Gemini Flash (free tier) to generate con
 Wire `--langgraph my_agent.py` and `--crewai my_crew.py` flags to invoke the framework parsers directly on Python source files.
 
 **Architecture for V2 executor:**
-```
+```python
 executor.run(graph, armed_paths, mode="live", backend="groq")
-  → spins up agent with Groq backend
-  → wraps each tool with an interceptor
-  → fires payload at entry tool
-  → records real LLM responses at each step
-  → verdict: did the payload reach the sink?
+  → builds system prompt from ToolGraph
+  → iterates over attack path nodes
+  → fires payload at entry tool as user message
+  → uses LLM to simulate tool execution and output
+  → loops output into next step
+  → verdict: explicit JSON schema at the sink node to determine if exploited
 ```
 
 ---
