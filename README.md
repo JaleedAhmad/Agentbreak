@@ -201,13 +201,16 @@ edges:
 
 ## Roadmap
 
-V1 is complete and stable. Active development on V2 is underway on the `v2-dev` branch.
+V2 is complete and available in v0.2.0. Active development on V3 will take place on the `v3-dev` branch.
 
-**V2 — Live Execution and Smart Payloads:** replaces the mock executor with a real LLM backend using Groq, adds context-aware payload generation via Gemini Flash that tailors injection strings to each tool's specific description, and wires the LangGraph and CrewAI parsers to accept Python source files directly via CLI flags.
+**V2 — Live Execution and Smart Payloads (Complete):**
+- **Live Executor:** Real LLM backend simulation using Groq with structured JSON verdicts and resilience logic.
+- **Smart Payloads:** Context-aware payload generation via Gemini Flash with silent fallback.
+- **CLI Parser Wiring:** Direct CLI support for LangGraph and CrewAI Python source files via dynamic loading.
 
 **V3 — CI/CD Integration and Compliance:** adds a pre-built GitHub Actions workflow that fails pipelines on HIGH or CRITICAL findings, a Judge LLM that produces structured verdicts on each exploit trace, OWASP Agentic Top 10 mapping with PDF compliance reports, a hosted scan API via FastAPI on Cloud Run, and AutoGen parser support.
 
-Follow the `v2-dev` branch to track progress.
+Follow the `v3-dev` branch to track progress once V3 work begins.
 
 ---
 
