@@ -1,5 +1,6 @@
 import sys
 from pathlib import Path
+import importlib.util
 
 import click
 from rich.console import Console
@@ -34,24 +35,72 @@ def info():
     click.echo("Author: JaleedAhmad")
     click.echo("GitHub: https://github.com/JaleedAhmad/Agentbreak")
 
+def _load_module_from_file(filepath: str):
+    spec = importlib.util.spec_from_file_location("dynamic_module", filepath)
+    if spec is None or spec.loader is None:
+        raise ValueError(f"Could not load Python module from {filepath}")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
 @main.command()
-@click.option("--schema", type=click.Path(exists=True, dir_okay=False), required=True, help="Path to a YAML/JSON tool schema file")
+@click.option("--schema", type=click.Path(exists=True, dir_okay=False), required=False, help="Path to a YAML/JSON tool schema file")
+@click.option("--langgraph", type=click.Path(exists=True, dir_okay=False), required=False, help="Path to a Python file containing a LangGraph object")
+@click.option("--crewai", type=click.Path(exists=True, dir_okay=False), required=False, help="Path to a Python file containing a CrewAI Crew object")
 @click.option("--output", type=click.Path(file_okay=False), default="./agentbreak-report/", help="Output directory (default: ./agentbreak-report/)")
 @click.option("--external-only", is_flag=True, default=False, help="Only trace paths from EXTERNAL sources (skip UNTRUSTED)")
 @click.option("--max-depth", type=int, default=8, help="Max path depth (default: 8)")
 @click.option("--no-html", is_flag=True, default=False, help="Skip HTML report, write JSONL only")
 @click.option("--live", is_flag=True, default=False, help="Enable live execution mode using Groq (requires GROQ_API_KEY)")
 @click.option("--smart-payloads", is_flag=True, default=False, help="Use Gemini to generate context-aware payloads")
-def scan(schema, output, external_only, max_depth, no_html, live, smart_payloads):
+def scan(schema, langgraph, crewai, output, external_only, max_depth, no_html, live, smart_payloads):
     """Scan an agent schema for vulnerabilities."""
+    inputs = [i for i in [schema, langgraph, crewai] if i is not None]
+    if len(inputs) != 1:
+        console.print("[bold red]Error:[/] You must provide exactly one of --schema, --langgraph, or --crewai.")
+        sys.exit(1)
+        
     out_dir = Path(output)
     out_dir.mkdir(parents=True, exist_ok=True)
     
-    # 1. Parse schema
+    # 1. Parse input
     try:
-        graph = schema_parser.parse(schema)
+        if schema:
+            graph = schema_parser.parse(schema)
+        elif langgraph:
+            from agentbreak.parsers import langgraph_parser
+            module = _load_module_from_file(langgraph)
+            from langgraph.graph.state import StateGraph, CompiledStateGraph
+            
+            target_obj = None
+            for obj in vars(module).values():
+                if isinstance(obj, (StateGraph, CompiledStateGraph)):
+                    target_obj = obj
+                    break
+                    
+            if target_obj is None:
+                console.print(f"[bold red]Error:[/] No StateGraph or CompiledStateGraph found in {langgraph}")
+                sys.exit(1)
+                
+            graph = langgraph_parser.parse(target_obj)
+        elif crewai:
+            from agentbreak.parsers import crewai_parser
+            module = _load_module_from_file(crewai)
+            from crewai import Crew
+            
+            target_obj = None
+            for obj in vars(module).values():
+                if isinstance(obj, Crew):
+                    target_obj = obj
+                    break
+                    
+            if target_obj is None:
+                console.print(f"[bold red]Error:[/] No Crew object found in {crewai}")
+                sys.exit(1)
+                
+            graph = crewai_parser.parse(target_obj)
     except Exception as e:
-        console.print(f"[bold red]Error parsing schema:[/] {e}")
+        console.print(f"[bold red]Error parsing input:[/] {e}")
         sys.exit(1)
         
     console.print(f"[bold green]Parsed Schema:[/] {graph.summary()}")

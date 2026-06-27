@@ -7,7 +7,7 @@ from agentbreak.models.tool_graph import ToolEdge, ToolGraph, ToolNode
 try:
     import langgraph
 except ImportError:
-    raise ImportError("Install langgraph extra: pip install agentbreak[langgraph]")
+    raise ImportError("Install parsers extra: pip install agentbreak[parsers]")
 
 
 def parse(graph: Any, name: str = "langgraph_agent") -> ToolGraph:

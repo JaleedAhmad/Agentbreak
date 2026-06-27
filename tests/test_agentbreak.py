@@ -148,6 +148,9 @@ def test_full_pipeline_email_agent(parsed_email_graph):
 
 import pytest
 import os
+import tempfile
+from click.testing import CliRunner
+from agentbreak.cli import scan
 
 def test_executor_live_mode_missing_api_key(monkeypatch, parsed_email_graph):
     monkeypatch.delenv("GROQ_API_KEY", raising=False)
@@ -197,3 +200,40 @@ def test_smart_payloads_fallback_on_failure(parsed_email_graph):
         for original, smart in zip(armed, smart_armed):
             assert original.payload == smart.payload
             assert not smart.payload_name.endswith("_smart")
+
+
+def test_cli_mutually_exclusive_flags():
+    runner = CliRunner()
+    with tempfile.NamedTemporaryFile(suffix=".yaml", delete=False) as f1:
+        f1.write(b"x: 1\n")
+        f1.flush()
+        with tempfile.NamedTemporaryFile(suffix=".py", delete=False) as f2:
+            f2.write(b"y = 2\n")
+            f2.flush()
+            result = runner.invoke(scan, ["--schema", f1.name, "--langgraph", f2.name])
+            assert result.exit_code == 1
+            assert "exactly one" in result.output.lower()
+            os.unlink(f2.name)
+        os.unlink(f1.name)
+
+
+def test_cli_langgraph_no_object():
+    runner = CliRunner()
+    with tempfile.NamedTemporaryFile(suffix=".py", delete=False) as f:
+        f.write(b"x = 1\n")
+        f.flush()
+        result = runner.invoke(scan, ["--langgraph", f.name])
+    assert result.exit_code == 1
+    assert "no stategraph or compiledstategraph found" in result.output.lower()
+    os.unlink(f.name)
+
+
+def test_cli_crewai_no_object():
+    runner = CliRunner()
+    with tempfile.NamedTemporaryFile(suffix=".py", delete=False) as f:
+        f.write(b"x = 1\n")
+        f.flush()
+        result = runner.invoke(scan, ["--crewai", f.name])
+    assert result.exit_code == 1
+    assert "no crew object found" in result.output.lower()
+    os.unlink(f.name)
