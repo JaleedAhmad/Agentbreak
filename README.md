@@ -68,14 +68,14 @@ Then install AgentBreak:
 pipx install git+https://github.com/JaleedAhmad/Agentbreak.git
 ```
 
-For LangGraph support:
+For framework parsers (LangGraph & CrewAI):
 ```bash
-pipx install "agentbreak[langgraph] @ git+https://github.com/JaleedAhmad/Agentbreak.git"
+pipx install "agentbreak[parsers] @ git+https://github.com/JaleedAhmad/Agentbreak.git"
 ```
 
-For CrewAI support:
+For live execution and smart payloads (V2 features):
 ```bash
-pipx install "agentbreak[crewai] @ git+https://github.com/JaleedAhmad/Agentbreak.git"
+pipx install "agentbreak[live,smart] @ git+https://github.com/JaleedAhmad/Agentbreak.git"
 ```
 
 *(Alternatively, if you prefer `pip`, you must create and activate a virtual environment first: `python3 -m venv venv && source venv/bin/activate`, and then run `pip install ...`)*
@@ -130,6 +130,11 @@ agentbreak scan --langgraph my_agent.py
 3. CI/CD mode (exits 1 on HIGH or CRITICAL findings):
 ```bash
 agentbreak scan --schema tools.yaml --output ./security-report/
+```
+
+4. Live execution & Smart Payloads (requires API keys):
+```bash
+agentbreak scan --langgraph my_agent.py --live --smart-payloads
 ```
 
 ---
@@ -193,7 +198,7 @@ edges:
 
 ## What it does not test
 
-- Live execution against a real LLM (mock mode only in V1)
+- True runtime process interception (AgentBreak uses LLM-simulated live execution)
 - Runtime guardrail bypass (this is pre-deployment static analysis)
 - Vulnerabilities in the model itself (use garak for that)
 
