@@ -7,7 +7,7 @@ from agentbreak.models.tool_graph import ToolEdge, ToolGraph, ToolNode
 try:
     import crewai
 except ImportError:
-    raise ImportError("Install crewai extra: pip install agentbreak[crewai]")
+    raise ImportError("Install parsers extra: pip install agentbreak[parsers]")
 
 
 def parse(crew: Any, name: str = "crewai_agent") -> ToolGraph:

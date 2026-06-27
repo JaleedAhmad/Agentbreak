@@ -5,7 +5,7 @@ from agentbreak.models.attack_path import AttackPath, ExploitResult
 from agentbreak.parsers import schema_parser
 from agentbreak.scanner.path_finder import find_attack_paths
 from agentbreak.scanner.payload_generator import generate_payloads, generate_all_payloads
-from agentbreak.scanner.executor import Executor
+from agentbreak.scanner import executor
 
 
 def test_enums_exist():
@@ -138,10 +138,102 @@ def test_full_pipeline_email_agent(parsed_email_graph):
     paths = find_attack_paths(graph)
     armed = generate_all_payloads(paths)
     
-    executor = Executor(graph, mock_mode=True)
-    results = executor.run(armed)
+    results = executor.run(graph, armed, mode="mock")
     
     assert len(results) >= 4
     assert any(r.exploited for r in results)
     assert any(r.severity == Severity.HIGH for r in results)
     assert all(r.mock_mode for r in results)
+
+
+import pytest
+import os
+import tempfile
+from click.testing import CliRunner
+from agentbreak.cli import scan
+
+def test_executor_live_mode_missing_api_key(monkeypatch, parsed_email_graph):
+    monkeypatch.delenv("GROQ_API_KEY", raising=False)
+    paths = find_attack_paths(parsed_email_graph)
+    armed = generate_all_payloads(paths)
+    
+    with pytest.raises(ValueError, match="GROQ_API_KEY"):
+        executor.run(parsed_email_graph, armed, mode="live", backend="groq")
+
+
+def test_executor_mock_mode_unchanged(monkeypatch, parsed_email_graph):
+    monkeypatch.delenv("GROQ_API_KEY", raising=False)
+    paths = find_attack_paths(parsed_email_graph)
+    armed = generate_all_payloads(paths)
+    
+    results = executor.run(parsed_email_graph, armed, mode="mock")
+    assert len(results) >= 4
+    assert any(r.exploited for r in results)
+    assert all(r.mock_mode for r in results)
+
+
+def test_smart_payloads_missing_api_key(parsed_email_graph):
+    pytest.importorskip("google.generativeai")
+    paths = find_attack_paths(parsed_email_graph)
+    armed = generate_all_payloads(paths)
+    
+    from agentbreak.scanner.payload_generator import generate_smart_payloads
+    with pytest.raises(ValueError, match="GEMINI_API_KEY"):
+        generate_smart_payloads(parsed_email_graph, armed, "")
+
+
+def test_smart_payloads_fallback_on_failure(parsed_email_graph):
+    pytest.importorskip("google.generativeai")
+    paths = find_attack_paths(parsed_email_graph)
+    armed = generate_all_payloads(paths)
+    
+    from agentbreak.scanner.payload_generator import generate_smart_payloads
+    from unittest.mock import patch
+    
+    with patch("google.generativeai.GenerativeModel") as mock_model:
+        mock_instance = mock_model.return_value
+        mock_instance.generate_content.side_effect = Exception("API Error")
+        
+        smart_armed = generate_smart_payloads(parsed_email_graph, armed, "fake_key")
+        
+        assert len(smart_armed) == len(armed)
+        for original, smart in zip(armed, smart_armed):
+            assert original.payload == smart.payload
+            assert not smart.payload_name.endswith("_smart")
+
+
+def test_cli_mutually_exclusive_flags():
+    runner = CliRunner()
+    with tempfile.NamedTemporaryFile(suffix=".yaml", delete=False) as f1:
+        f1.write(b"x: 1\n")
+        f1.flush()
+        with tempfile.NamedTemporaryFile(suffix=".py", delete=False) as f2:
+            f2.write(b"y = 2\n")
+            f2.flush()
+            result = runner.invoke(scan, ["--schema", f1.name, "--langgraph", f2.name])
+            assert result.exit_code == 1
+            assert "exactly one" in result.output.lower()
+            os.unlink(f2.name)
+        os.unlink(f1.name)
+
+
+def test_cli_langgraph_no_object():
+    runner = CliRunner()
+    with tempfile.NamedTemporaryFile(suffix=".py", delete=False) as f:
+        f.write(b"x = 1\n")
+        f.flush()
+        result = runner.invoke(scan, ["--langgraph", f.name])
+    assert result.exit_code == 1
+    assert "no stategraph or compiledstategraph found" in result.output.lower()
+    os.unlink(f.name)
+
+
+def test_cli_crewai_no_object():
+    runner = CliRunner()
+    with tempfile.NamedTemporaryFile(suffix=".py", delete=False) as f:
+        f.write(b"x = 1\n")
+        f.flush()
+        result = runner.invoke(scan, ["--crewai", f.name])
+    assert result.exit_code == 1
+    assert "no crew object found" in result.output.lower()
+    os.unlink(f.name)
