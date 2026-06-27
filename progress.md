@@ -22,3 +22,9 @@ This document summarizes the development and organization milestones achieved fo
 ## 4. Quality Assurance
 - **Dependency Management**: Cleaned up and verified `pyproject.toml` and `requirements.txt` for reliable local development and package distribution.
 - **Environment Validation**: Validated the project's internal directory structure and confirmed the seamless uninstallation/reinstallation of package dependencies.
+
+## 5. V2 Development & Features (v0.2.0 Complete)
+- **Live Executor Engine**: Introduced an LLM-simulated live execution mode (`--live`) using the Groq API, featuring structured JSON verdicts for exploit detection, 2-second retry backoff, and robust error logging into `ExploitResult.evidence`.
+- **Smart Payloads**: Integrated Gemini 2.0 Flash (`--smart-payloads`) to intelligently mutate the 8 hardcoded templates based on the entry tool's name/description and the target sink, creating highly realistic context-aware attacks with silent fallbacks.
+- **Framework CLI Wiring**: Wired the LangGraph and CrewAI parsers directly to the CLI (`--langgraph` and `--crewai`), utilizing Python's `importlib` and `vars(module)` for dynamic, zero-configuration parsing of Python source files.
+- **Infrastructure & Releasing**: Consolidated optional dependencies into semantic groups (`[parsers,live,smart]`), integrated `.env` support for API keys, successfully merged `v2-dev` into `main` via Pull Request, and published the official `v0.2.0` release.
