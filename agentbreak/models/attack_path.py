@@ -124,3 +124,5 @@ class ExploitResult:
                 for r in self.trace
             ],
         }
+
+ArmedPath = AttackPath

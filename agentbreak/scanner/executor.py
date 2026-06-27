@@ -15,6 +15,11 @@ logger = logging.getLogger(__name__)
 def run(graph: ToolGraph, attack_paths: list[AttackPath], mode: str = "mock", backend: str = "groq") -> list[ExploitResult]:
     """
     Module-level function to run the executor.
+    
+    TODO(tech-debt): ArmedPath is currently a soft alias for AttackPath and 
+    does not enforce that a payload is present at runtime. If we need to strictly
+    assert paths are armed before execution, add a guard here (e.g., 
+    `if not path.payload: ...`) rather than relying on the type system.
     """
     executor = Executor(graph, mock_mode=(mode == "mock"))
     if not executor.mock_mode and backend == "groq":

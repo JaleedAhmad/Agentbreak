@@ -41,7 +41,8 @@ def info():
 @click.option("--max-depth", type=int, default=8, help="Max path depth (default: 8)")
 @click.option("--no-html", is_flag=True, default=False, help="Skip HTML report, write JSONL only")
 @click.option("--live", is_flag=True, default=False, help="Enable live execution mode using Groq (requires GROQ_API_KEY)")
-def scan(schema, output, external_only, max_depth, no_html, live):
+@click.option("--smart-payloads", is_flag=True, default=False, help="Use Gemini to generate context-aware payloads")
+def scan(schema, output, external_only, max_depth, no_html, live, smart_payloads):
     """Scan an agent schema for vulnerabilities."""
     out_dir = Path(output)
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -83,7 +84,18 @@ def scan(schema, output, external_only, max_depth, no_html, live):
     
     # 3. Generate payloads
     armed_paths = payload_generator.generate_all_payloads(paths)
-    console.print(f"[dim]Generated {len(armed_paths)} payloads to test.[/]")
+    console.print(f"[dim]Generated {len(armed_paths)} hardcoded payloads to test.[/]")
+    
+    if smart_payloads:
+        console.print("[bold]Generating smart payloads with Gemini...[/]")
+        import os
+        api_key = os.environ.get("GEMINI_API_KEY", "")
+        try:
+            armed_paths = payload_generator.generate_smart_payloads(graph, armed_paths, api_key)
+            console.print(f"[dim]Re-armed {len(armed_paths)} payloads with Gemini.[/]")
+        except (ValueError, ImportError) as e:
+            console.print(f"[bold red]Error:[/] {e}")
+            sys.exit(1)
     
     # 4. Execute
     if live:

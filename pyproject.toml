@@ -33,6 +33,7 @@ langgraph = ["langgraph>=0.2", "langchain-core>=0.2"]
 crewai   = ["crewai>=0.51"]
 dev      = ["pytest>=8.0", "pytest-cov", "ruff", "mypy"]
 live     = ["groq>=0.9.0"]
+smart    = ["google-generativeai>=0.8.0"]
 
 [project.scripts]
 agentbreak = "agentbreak.cli:main"

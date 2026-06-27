@@ -167,3 +167,33 @@ def test_executor_mock_mode_unchanged(monkeypatch, parsed_email_graph):
     assert len(results) >= 4
     assert any(r.exploited for r in results)
     assert all(r.mock_mode for r in results)
+
+
+def test_smart_payloads_missing_api_key(parsed_email_graph):
+    pytest.importorskip("google.generativeai")
+    paths = find_attack_paths(parsed_email_graph)
+    armed = generate_all_payloads(paths)
+    
+    from agentbreak.scanner.payload_generator import generate_smart_payloads
+    with pytest.raises(ValueError, match="GEMINI_API_KEY"):
+        generate_smart_payloads(parsed_email_graph, armed, "")
+
+
+def test_smart_payloads_fallback_on_failure(parsed_email_graph):
+    pytest.importorskip("google.generativeai")
+    paths = find_attack_paths(parsed_email_graph)
+    armed = generate_all_payloads(paths)
+    
+    from agentbreak.scanner.payload_generator import generate_smart_payloads
+    from unittest.mock import patch
+    
+    with patch("google.generativeai.GenerativeModel") as mock_model:
+        mock_instance = mock_model.return_value
+        mock_instance.generate_content.side_effect = Exception("API Error")
+        
+        smart_armed = generate_smart_payloads(parsed_email_graph, armed, "fake_key")
+        
+        assert len(smart_armed) == len(armed)
+        for original, smart in zip(armed, smart_armed):
+            assert original.payload == smart.payload
+            assert not smart.payload_name.endswith("_smart")
