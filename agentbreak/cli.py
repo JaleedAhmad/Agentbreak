@@ -7,7 +7,7 @@ from rich.table import Table
 
 from agentbreak.parsers import schema_parser
 from agentbreak.scanner import path_finder, payload_generator
-from agentbreak.scanner.executor import Executor
+from agentbreak.scanner import executor
 from agentbreak.output import jsonl_reporter
 from agentbreak.output.html_reporter import HTMLReporter
 from agentbreak.models.enums import Severity
@@ -40,7 +40,8 @@ def info():
 @click.option("--external-only", is_flag=True, default=False, help="Only trace paths from EXTERNAL sources (skip UNTRUSTED)")
 @click.option("--max-depth", type=int, default=8, help="Max path depth (default: 8)")
 @click.option("--no-html", is_flag=True, default=False, help="Skip HTML report, write JSONL only")
-def scan(schema, output, external_only, max_depth, no_html):
+@click.option("--live", is_flag=True, default=False, help="Enable live execution mode using Groq (requires GROQ_API_KEY)")
+def scan(schema, output, external_only, max_depth, no_html, live):
     """Scan an agent schema for vulnerabilities."""
     out_dir = Path(output)
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -85,9 +86,12 @@ def scan(schema, output, external_only, max_depth, no_html):
     console.print(f"[dim]Generated {len(armed_paths)} payloads to test.[/]")
     
     # 4. Execute
-    console.print("[bold]Running executor in mock mode...[/]")
-    executor = Executor(graph, mock_mode=True)
-    results = executor.run(armed_paths)
+    if live:
+        console.print("[bold]Running executor in live mode (Groq)...[/]")
+        results = executor.run(graph, armed_paths, mode="live", backend="groq")
+    else:
+        console.print("[bold]Running executor in mock mode...[/]")
+        results = executor.run(graph, armed_paths, mode="mock")
     
     # 5. Print results table
     res_table = Table(title="Scan Results")

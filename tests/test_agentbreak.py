@@ -5,7 +5,7 @@ from agentbreak.models.attack_path import AttackPath, ExploitResult
 from agentbreak.parsers import schema_parser
 from agentbreak.scanner.path_finder import find_attack_paths
 from agentbreak.scanner.payload_generator import generate_payloads, generate_all_payloads
-from agentbreak.scanner.executor import Executor
+from agentbreak.scanner import executor
 
 
 def test_enums_exist():
@@ -138,10 +138,32 @@ def test_full_pipeline_email_agent(parsed_email_graph):
     paths = find_attack_paths(graph)
     armed = generate_all_payloads(paths)
     
-    executor = Executor(graph, mock_mode=True)
-    results = executor.run(armed)
+    results = executor.run(graph, armed, mode="mock")
     
     assert len(results) >= 4
     assert any(r.exploited for r in results)
     assert any(r.severity == Severity.HIGH for r in results)
+    assert all(r.mock_mode for r in results)
+
+
+import pytest
+import os
+
+def test_executor_live_mode_missing_api_key(monkeypatch, parsed_email_graph):
+    monkeypatch.delenv("GROQ_API_KEY", raising=False)
+    paths = find_attack_paths(parsed_email_graph)
+    armed = generate_all_payloads(paths)
+    
+    with pytest.raises(ValueError, match="GROQ_API_KEY"):
+        executor.run(parsed_email_graph, armed, mode="live", backend="groq")
+
+
+def test_executor_mock_mode_unchanged(monkeypatch, parsed_email_graph):
+    monkeypatch.delenv("GROQ_API_KEY", raising=False)
+    paths = find_attack_paths(parsed_email_graph)
+    armed = generate_all_payloads(paths)
+    
+    results = executor.run(parsed_email_graph, armed, mode="mock")
+    assert len(results) >= 4
+    assert any(r.exploited for r in results)
     assert all(r.mock_mode for r in results)
