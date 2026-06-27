@@ -26,6 +26,7 @@ dependencies = [
     "rich>=13.0",       # terminal output
     "click>=8.1",       # CLI
     "jinja2>=3.1",      # HTML report templating
+    "python-dotenv>=1.0", # Environment variables
 ]
 
 [project.optional-dependencies]

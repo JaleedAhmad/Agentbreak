@@ -1,0 +1,13 @@
+The V2 Parser Wiring is complete!
+
+Here is what was accomplished:
+
+CLI Updates: Added the --langgraph and --crewai flags to cli.py, removed the strict requirement on --schema, and added robust validation to ensure exactly one of those flags is provided per run.
+Dynamic Loading: Implemented _load_module_from_file using importlib.util to safely execute arbitrary .py files, then extracted StateGraph, CompiledStateGraph, and Crew objects by iterating over vars(module).values().
+Extras Consolidation: Merged the previous individual framework dependencies in pyproject.toml into a single, clean [parsers] extras group, and updated the ImportError prompts in the parser files to reflect this.
+Test Coverage: Wrote 3 new tests using click.testing.CliRunner and tempfile to verify the mutually exclusive logic and graceful error handling when valid graph objects aren't found. The test suite is passing with 15/15 tests!
+I have appended all of these updates to the 
+Walkthrough
+.
+
+Would you like me to commit these changes to the v2-dev branch, or is there anything else you want to review first?

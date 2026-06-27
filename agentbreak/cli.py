@@ -4,6 +4,9 @@ import importlib.util
 
 import click
 from rich.console import Console
+from dotenv import load_dotenv
+
+load_dotenv()
 from rich.table import Table
 
 from agentbreak.parsers import schema_parser

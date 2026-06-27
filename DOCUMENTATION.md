@@ -1,7 +1,7 @@
 # AgentBreak — Technical Documentation
 
-**Version:** 0.1.0  
-**Status:** V1 complete, V2 in design  
+**Version:** 0.2.0  
+**Status:** V2 complete, V3 in design  
 **Repository:** https://github.com/JaleedAhmad/Agentbreak  
 **Author:** Jaleed Ahmad  
 **Last updated:** June 2026
@@ -23,7 +23,7 @@
 11. [Payload Library](#11-payload-library)
 12. [Test Suite](#12-test-suite)
 13. [Data Flow — End to End](#13-data-flow--end-to-end)
-14. [What Has Been Built (V1 Complete)](#14-what-has-been-built-v1-complete)
+14. [What Has Been Built (V2 Complete)](#14-what-has-been-built-v2-complete)
 15. [What Has Not Been Built Yet](#15-what-has-not-been-built-yet)
 16. [Future Work](#16-future-work)
 17. [Design Decisions and Rationale](#17-design-decisions-and-rationale)
@@ -371,6 +371,8 @@ graph: ToolGraph = parse("path/to/tools.yaml")
 
 Inspects a compiled LangGraph `StateGraph` object via Python introspection. Walks `graph.nodes`, extracts function names, docstrings, and signatures, then applies keyword heuristics to assign trust levels and sink types.
 
+This parser is fully wired to the CLI via the `--langgraph` flag. It accepts Python source files directly, uses `importlib` for dynamic loading, and searches the module's namespace for `StateGraph` and `CompiledStateGraph` objects via `vars(module).values()`.
+
 **Trust heuristics (checked against function name):**
 - Contains `search`, `fetch`, `scrape`, `browse`, `web`, `email`, `file_read`, `load`, `retrieve` → EXTERNAL
 - Contains `user`, `input`, `query`, `request` → UNTRUSTED
@@ -386,7 +388,7 @@ Inspects a compiled LangGraph `StateGraph` object via Python introspection. Walk
 
 **Edge inference:** Conservative — every EXTERNAL/UNTRUSTED node is connected to every other node.
 
-**Requires:** `pip install agentbreak[langgraph]`. Raises `ImportError` with install instructions if LangGraph is not installed.
+**Requires:** `pip install agentbreak[parsers]`. Raises `ImportError` with install instructions if LangGraph is not installed.
 
 **Public API:**
 ```python
@@ -400,13 +402,15 @@ graph: ToolGraph = parse(compiled_state_graph, name="my_agent")
 
 Inspects a CrewAI `Crew` object. Iterates `crew.agents`, then each agent's `.tools` list. Each tool is a `BaseTool` subclass with `.name` and `.description` attributes.
 
+This parser is fully wired to the CLI via the `--crewai` flag. It accepts Python source files directly, uses `importlib` for dynamic loading, and searches the module's namespace for `Crew` objects via `vars(module).values()`.
+
 **Differences from LangGraph parser:**
 - Applies same keyword heuristics to `tool.name` and `tool.description`
 - Adds `{"agent": agent.role}` to each node's metadata
 - Deduplicates tools that appear in multiple agents by suffixing `_agent1`, `_agent2`
 - Edge inference is slightly more precise: connects EXTERNAL/UNTRUSTED nodes to TRUSTED nodes that have sinks (rather than fully-connected)
 
-**Requires:** `pip install agentbreak[crewai]`.
+**Requires:** `pip install agentbreak[parsers]`.
 
 **Public API:**
 ```python
@@ -488,7 +492,7 @@ armed_paths: list[AttackPath] = generate_all_payloads(paths)
 
 ### 8.3 `executor.py`
 
-**What it does:** Takes the ToolGraph and a list of armed AttackPaths and runs the agent against each payload. In V1, all execution is mocked — no real LLM calls are made. The executor simulates tool execution, records a `ToolCallRecord` per step, determines whether the payload successfully propagated to the sink, and assigns severity.
+**What it does:** Takes the ToolGraph and a list of armed AttackPaths and runs the agent against each payload. It accepts a `mode` parameter (`"mock"` or `"live"`) and a `backend` parameter.
 
 **Mock mode behavior:**
 - Intercepts each tool call in the chain
@@ -497,12 +501,19 @@ armed_paths: list[AttackPath] = generate_all_payloads(paths)
 - Flags the call as exploited if the payload string survives to the sink node
 - Calls `result.assign_severity()` automatically
 
+**Live Execution Mode (V2):**
+- Uses **Groq** as the LLM backend (requires `GROQ_API_KEY`).
+- Builds a dynamic system prompt from the full `ToolGraph` to simulate the agent's behavior and environment.
+- Evaluates exploitation at the sink node using a structured JSON verdict.
+- Features robust error handling: retries once with a 2-second backoff on failure, and logs execution errors into `ExploitResult.evidence` rather than crashing the scanner.
+- *Note explicitly:* Live mode simulates tool execution via the LLM rather than true agent interception. This is a pragmatic V2 bridge toward true runtime interception in V3.
+
 **Output:** `list[ExploitResult]`
 
 **Public API:**
 ```python
 from agentbreak.scanner import executor
-results: list[ExploitResult] = executor.run(graph, armed_paths)
+results: list[ExploitResult] = executor.run(graph, armed_paths, mode="mock", backend="groq")
 ```
 
 ---
@@ -581,11 +592,17 @@ Prints version, author, GitHub URL.
 
 ## 11. Payload Library
 
-All payloads in V1 are hardcoded strings — deterministic, reproducible, no LLM required. They are designed to:
+All payloads default to hardcoded strings — deterministic, reproducible, no LLM required. They are designed to:
 
 1. Survive LLM reformatting — they include explicit instruction markers that models tend to treat as system-level directives
 2. Match the specific action of the target sink — an EMAIL_SEND payload includes a realistic-looking forwarding instruction, not a generic override
 3. Be context-aware — the template name tells you exactly what it tests
+
+### Smart Payloads (V2)
+
+An opt-in feature via the `--smart-payloads` flag. When enabled, AgentBreak uses `gemini-2.0-flash` to rewrite the hardcoded payloads, making them context-aware based on the entry tool's name and description, and the target sink type.
+- Generated payload names have `_smart` appended in the final reports.
+- If the Gemini API fails (rate limit, network issue, missing key), it silently falls back to the original hardcoded payload, ensuring the scan always completes.
 
 ### Full Payload Descriptions
 
@@ -694,7 +711,7 @@ This is what happens when you run `agentbreak scan --schema examples/email_agent
 
 ---
 
-## 14. What Has Been Built (V1 Complete)
+## 14. What Has Been Built (V2 Complete)
 
 Everything in this section exists, is tested, and is pushed to the repository.
 
@@ -712,20 +729,20 @@ Everything in this section exists, is tested, and is pushed to the repository.
 
 **Parsers:**
 - `schema_parser.py` — full implementation, alias handling, edge inference, error handling
-- `langgraph_parser.py` — keyword heuristic implementation via Antigravity
-- `crewai_parser.py` — keyword heuristic implementation via Antigravity
+- `langgraph_parser.py` — wired to CLI via `--langgraph`, dynamic importlib loading
+- `crewai_parser.py` — wired to CLI via `--crewai`, dynamic importlib loading
 
 **Scanner:**
 - `path_finder.py` — DFS with cycle detection, deduplication, sorting
-- `payload_generator.py` — 8 templates + generic fallback, sink/trust matching
-- `executor.py` — mock mode implementation via Antigravity
+- `payload_generator.py` — 8 templates + generic fallback, sink/trust matching, plus Gemini **Smart Payloads** integration
+- `executor.py` — supports both `mock` and `live` execution modes (simulated via Groq LLM backend)
 
 **Output:**
 - `jsonl_reporter.py` — structured JSONL with trace, summary function, via Antigravity
 - `html_reporter.py` — standalone HTML report with severity badges, via Antigravity
 
 **CLI:**
-- `cli.py` — scan and info commands, Rich terminal output, exit code logic, via Antigravity
+- `cli.py` — scan and info commands, Rich terminal output, exit code logic, parser wiring (`--langgraph`, `--crewai`)
 
 **Examples:**
 - `examples/email_agent.yaml` — 6-node email assistant (Lethal Trifecta demo)
@@ -744,11 +761,8 @@ Everything in this section exists, is tested, and is pushed to the repository.
 
 ## 15. What Has Not Been Built Yet
 
-**V1 gaps (known, intentional deferrals):**
+**Gaps (known, intentional deferrals):**
 
-- **Live execution mode** — `executor.py` only supports mock mode. Real LLM calls against a live agent are V2.
-- **LLM-generated payloads** — all 8 templates are hardcoded strings. Context-aware payload generation using Groq/Gemini is V2.
-- **`--langgraph` and `--crewai` CLI flags** — the parsers exist but the CLI flags to invoke them directly from a Python file are not wired in V1. `--schema` is the only working input mode.
 - **GitHub Actions workflow** — no `.github/workflows/` directory. CI/CD integration is V3.
 - **PyPI publication** — the package is not on PyPI. Install via git URL only.
 - **Judge LLM** — no automated verdict on whether exploitation succeeded beyond keyword matching. V3.
@@ -759,31 +773,7 @@ Everything in this section exists, is tested, and is pushed to the repository.
 
 ## 16. Future Work
 
-### V2 — Live Execution + Smart Payloads
 
-**Live execution mode:**
-Add an `--live` flag to the executor that runs the attack paths using a real LLM backend. Default backend: Groq (Llama 3 8B).
-
-*Note: In V2, live execution is a pragmatic simulation approach. Rather than spinning up the agent in a subprocess and intercepting true Python tool calls, the Executor uses the LLM to realistically simulate both the agent's reasoning and the output of its tools step-by-step. This confirms that a path is exploitable in practice using a live model, acting as a bridge towards true agent interception in the future.*
-
-**LLM-generated payload variants:**
-Add a `--smart-payloads` flag that uses Gemini Flash (free tier) to generate context-aware injection strings tailored to each tool's specific description. A `fetch_customer_records` tool gets a payload that mentions customer records. A `search_arxiv` tool gets a payload disguised as a research abstract. This dramatically increases the realism and coverage of the scanner.
-
-**CLI improvements:**
-Wire `--langgraph my_agent.py` and `--crewai my_crew.py` flags to invoke the framework parsers directly on Python source files.
-
-**Architecture for V2 executor:**
-```python
-executor.run(graph, armed_paths, mode="live", backend="groq")
-  → builds system prompt from ToolGraph
-  → iterates over attack path nodes
-  → fires payload at entry tool as user message
-  → uses LLM to simulate tool execution and output
-  → loops output into next step
-  → verdict: explicit JSON schema at the sink node to determine if exploited
-```
-
----
 
 ### V3 — CI/CD Integration + Compliance
 
