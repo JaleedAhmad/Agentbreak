@@ -226,16 +226,15 @@ edges:
 
 ## Roadmap
 
-V2 is complete and available in v0.2.0. Active development on V3 will take place on the `v3-dev` branch.
+V3 is complete and available in `v0.3.0`. Active development on V4 will take place on the `v4-dev` branch.
 
-**V2 — Live Execution and Smart Payloads (Complete):**
-- **Live Executor:** Real LLM backend simulation using Groq with structured JSON verdicts and resilience logic.
-- **Smart Payloads:** Context-aware payload generation via Gemini Flash with silent fallback.
-- **CLI Parser Wiring:** Direct CLI support for LangGraph and CrewAI Python source files via dynamic loading.
+**V3 — CI/CD Integration and Compliance (Complete):**
+Adds a pre-built GitHub Actions workflow that fails pipelines on HIGH or CRITICAL findings, a Judge LLM that produces structured verdicts on each exploit trace, OWASP Agentic Top 10 mapping with PDF compliance reports, a hosted scan API via FastAPI, and AutoGen parser support.
 
-**V3 — CI/CD Integration and Compliance:** adds a pre-built GitHub Actions workflow that fails pipelines on HIGH or CRITICAL findings, a Judge LLM that produces structured verdicts on each exploit trace, OWASP Agentic Top 10 mapping with PDF compliance reports, a hosted scan API via FastAPI on Cloud Run, and AutoGen parser support.
+**V4 — Web UI & Ecosystem Expansion:**
+Publish AgentBreak to the official Python Package Index for standard `pip install` execution. Introduce report diffing to detect regression between scans. Build a hosted Web UI frontend on top of the API for visual drag-and-drop schema testing, and expose Swagger API documentation.
 
-Follow the `v3-dev` branch to track progress once V3 work begins.
+*Follow the `v4-dev` branch to track progress once V4 work begins.*
 
 ---
 
