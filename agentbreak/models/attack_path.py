@@ -68,6 +68,7 @@ class ExploitResult:
     trace:         list[ToolCallRecord]   = field(default_factory=list)
     evidence:      str                    = ""    # one-line human summary
     mock_mode:     bool                   = True  # True = sandbox, False = live
+    judge_confidence: Optional[float]     = None  # added by Judge LLM
 
     # ── severity auto-assignment ──────────────────────────────────────────────
 
@@ -114,6 +115,7 @@ class ExploitResult:
             "severity":    self.severity.value,
             "evidence":    self.evidence,
             "mock_mode":   self.mock_mode,
+            "judge_confidence": self.judge_confidence,
             "trace": [
                 {
                     "tool":    r.tool_name,

@@ -57,8 +57,13 @@ def _load_module_from_file(filepath: str):
 @click.option("--no-html", is_flag=True, default=False, help="Skip HTML report, write JSONL only")
 @click.option("--live", is_flag=True, default=False, help="Enable live execution mode using Groq (requires GROQ_API_KEY)")
 @click.option("--smart-payloads", is_flag=True, default=False, help="Use Gemini to generate context-aware payloads")
-def scan(schema, langgraph, crewai, autogen, output, external_only, max_depth, no_html, live, smart_payloads):
+@click.option("--judge", is_flag=True, default=False, help="Use Judge LLM to verify live exploits (requires --live)")
+def scan(schema, langgraph, crewai, autogen, output, external_only, max_depth, no_html, live, smart_payloads, judge):
     """Scan an agent schema for vulnerabilities."""
+    if judge and not live:
+        console.print("[bold red]Error:[/] --judge requires --live mode.")
+        sys.exit(1)
+        
     inputs = [i for i in [schema, langgraph, crewai, autogen] if i is not None]
     if len(inputs) != 1:
         console.print("[bold red]Error:[/] You must provide exactly one of --schema, --langgraph, --crewai, or --autogen.")
@@ -157,6 +162,11 @@ def scan(schema, langgraph, crewai, autogen, output, external_only, max_depth, n
     if live:
         console.print("[bold]Running executor in live mode (Groq)...[/]")
         results = executor.run(graph, armed_paths, mode="live", backend="groq")
+        if judge:
+            console.print("[bold]Running Judge LLM...[/]")
+            from agentbreak.scanner.judge import judge_exploit
+            for i in range(len(results)):
+                results[i] = judge_exploit(results[i], backend="groq")
     else:
         console.print("[bold]Running executor in mock mode...[/]")
         results = executor.run(graph, armed_paths, mode="mock")
@@ -167,6 +177,8 @@ def scan(schema, langgraph, crewai, autogen, output, external_only, max_depth, n
     res_table.add_column("Payload Name")
     res_table.add_column("Exploited", justify="center")
     res_table.add_column("Severity")
+    if judge:
+        res_table.add_column("Judge Conf", justify="center")
     
     has_critical_or_high = False
     
@@ -177,12 +189,17 @@ def scan(schema, langgraph, crewai, autogen, output, external_only, max_depth, n
         if r.exploited and r.severity in (Severity.CRITICAL, Severity.HIGH):
             has_critical_or_high = True
             
-        res_table.add_row(
+        row = [
             r.attack_path.describe(),
             r.attack_path.payload_name,
             exploited_mark,
             f"[{sev_color}]{r.severity.name}[/]"
-        )
+        ]
+        if judge:
+            conf_str = f"{r.judge_confidence:.2f}" if r.judge_confidence is not None else "N/A"
+            row.append(conf_str)
+            
+        res_table.add_row(*row)
         
     console.print(res_table)
     
