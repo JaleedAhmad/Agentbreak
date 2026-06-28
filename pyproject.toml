@@ -35,6 +35,7 @@ dev      = ["pytest>=8.0", "pytest-cov", "ruff", "mypy"]
 live     = ["groq>=0.9.0", "google-generativeai>=0.5.0", "python-dotenv>=1.0.0"]
 smart    = ["google-generativeai>=0.8.0"]
 compliance = ["markdown>=3.0", "weasyprint>=60.0"]
+api      = ["fastapi>=0.111.0", "uvicorn[standard]>=0.29.0", "python-multipart>=0.0.9"]
 
 [project.scripts]
 agentbreak = "agentbreak.cli:main"

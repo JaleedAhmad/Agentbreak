@@ -139,6 +139,26 @@ agentbreak scan --langgraph my_agent.py --live --smart-payloads
 
 ---
 
+## Hosted API
+
+AgentBreak includes a FastAPI-powered hosted backend, allowing you to invoke scans programmatically.
+
+To run the API locally:
+```bash
+pipx install "agentbreak[api] @ git+https://github.com/JaleedAhmad/Agentbreak.git"
+uvicorn agentbreak.api.main:app --reload
+```
+
+To build and run via Docker:
+```bash
+docker build -t agentbreak-api .
+docker run -p 8080:8080 agentbreak-api
+```
+
+> **Note on LangGraph Dynamic Imports:** The `/scan/langgraph` API endpoint requires uploaded Python files to be self-contained. If your LangGraph agent relies on local relative module imports, the API will fail to load it dynamically because those related files are not transmitted in the single-file HTTP upload.
+
+---
+
 ## Tool schema format
 
 ```yaml
