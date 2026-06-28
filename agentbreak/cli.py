@@ -210,7 +210,11 @@ def scan(schema, langgraph, crewai, autogen, output, external_only, max_depth, n
         html_out = out_dir / "agentbreak_report.html"
         HTMLReporter(results).generate(str(html_out))
         
+    from agentbreak.output.compliance_reporter import write_compliance_report
+    comp_path = write_compliance_report(results, out_dir)
+        
     console.print(f"\n[bold green]Report written to {out_dir}[/]")
+    console.print(f"[bold green]Compliance report written to {comp_path}[/]")
     
     # Exit code based on findings
     if has_critical_or_high:

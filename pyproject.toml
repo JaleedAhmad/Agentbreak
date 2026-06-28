@@ -34,6 +34,7 @@ parsers  = ["langgraph>=0.2", "langchain-core>=0.2", "crewai>=0.51", "pyautogen>
 dev      = ["pytest>=8.0", "pytest-cov", "ruff", "mypy"]
 live     = ["groq>=0.9.0", "google-generativeai>=0.5.0", "python-dotenv>=1.0.0"]
 smart    = ["google-generativeai>=0.8.0"]
+compliance = ["markdown>=3.0", "weasyprint>=60.0"]
 
 [project.scripts]
 agentbreak = "agentbreak.cli:main"
