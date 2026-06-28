@@ -28,3 +28,15 @@ This document summarizes the development and organization milestones achieved fo
 - **Smart Payloads**: Integrated Gemini 2.0 Flash (`--smart-payloads`) to intelligently mutate the 8 hardcoded templates based on the entry tool's name/description and the target sink, creating highly realistic context-aware attacks with silent fallbacks.
 - **Framework CLI Wiring**: Wired the LangGraph and CrewAI parsers directly to the CLI (`--langgraph` and `--crewai`), utilizing Python's `importlib` and `vars(module)` for dynamic, zero-configuration parsing of Python source files.
 - **Infrastructure & Releasing**: Consolidated optional dependencies into semantic groups (`[parsers,live,smart]`), integrated `.env` support for API keys, successfully merged `v2-dev` into `main` via Pull Request, and published the official `v0.2.0` release.
+
+## 6. V3 Development & Security Patch (v0.3.1 Complete)
+- **CI/CD Integration**: Developed a GitHub Actions composite action (`action.yml`) and workflow that fails builds on HIGH or CRITICAL findings, facilitating enterprise adoption.
+- **Compliance & Reporting**: Integrated OWASP Agentic Top 10 mapping and added a PDF compliance report generator (`weasyprint` fallback logic included).
+- **Judge Subsystem**: Created a dedicated Judge LLM module (`judge.py`) using Groq/Gemini to evaluate exploit traces and return structured verdicts.
+- **Hosted API & AutoGen**: Built a containerized FastAPI backend (`api/main.py`) to expose scans programmatically, and integrated a parser for Microsoft AutoGen `ConversableAgent` workflows.
+- **Security Hardening (v0.3.1)**: Addressed critical security risks in the framework itself:
+  - Enforced `yaml.safe_load` universally across the parser.
+  - Implemented comprehensive `html.escape()` sanitization in HTML reports to mitigate XSS.
+  - Hardened the Hosted API with `X-API-Key` authentication, IP-based sliding-window rate limiting (10 req/min), strict CORS filtering, and a 1MB `MaxBodySizeMiddleware`.
+  - Addressed RCE and Path Traversal risks by removing the dynamic `/scan/langgraph` endpoint in hosted mode and sanitizing CLI `--output` paths against system directories.
+- **Testing**: Added `test_security.py` featuring 11 new adversarial input and API security tests, bringing the total test suite to 27 fully passing tests.
