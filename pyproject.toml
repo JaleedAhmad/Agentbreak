@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "agentbreak"
-version = "0.1.0"
+version = "0.3.0"
 description = "Workflow-level security scanner for multi-agent AI systems"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -30,10 +30,12 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-parsers  = ["langgraph>=0.2", "langchain-core>=0.2", "crewai>=0.51"]
+parsers  = ["langgraph>=0.2", "langchain-core>=0.2", "crewai>=0.51", "pyautogen>=0.2.0"]
 dev      = ["pytest>=8.0", "pytest-cov", "ruff", "mypy"]
-live     = ["groq>=0.9.0"]
+live     = ["groq>=0.9.0", "google-generativeai>=0.5.0", "python-dotenv>=1.0.0"]
 smart    = ["google-generativeai>=0.8.0"]
+compliance = ["markdown>=3.0", "weasyprint>=60.0"]
+api      = ["fastapi>=0.111.0", "uvicorn[standard]>=0.29.0", "python-multipart>=0.0.9"]
 
 [project.scripts]
 agentbreak = "agentbreak.cli:main"

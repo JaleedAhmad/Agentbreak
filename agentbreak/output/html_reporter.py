@@ -75,6 +75,7 @@ class HTMLReporter:
             path_chain = html.escape(res.attack_path.describe())
             payload = html.escape(res.attack_path.payload)
             evidence = html.escape(res.evidence)
+            owasp_cat = html.escape(res.attack_path.owasp_category)
             
             trace_rows = ""
             for record in res.trace:
@@ -94,7 +95,7 @@ class HTMLReporter:
             results_html += f"""
             <div class="result-card">
                 <div class="result-header">
-                    <h2>#{idx} <span class="badge {severity_name}">{severity_name}</span></h2>
+                    <h2>#{idx} <span class="badge {severity_name}">{severity_name}</span> <span class="badge OWASP" style="{'' if owasp_cat else 'display:none;'}">{owasp_cat}</span></h2>
                     <div class="path-chain">{path_chain}</div>
                 </div>
                 
@@ -241,6 +242,7 @@ class HTMLReporter:
         .badge.MEDIUM {{ background: rgba(234, 179, 8, 0.1); color: var(--medium); border: 1px solid var(--medium); }}
         .badge.LOW {{ background: rgba(59, 130, 246, 0.1); color: var(--low); border: 1px solid var(--low); }}
         .badge.INFO {{ background: rgba(100, 116, 139, 0.1); color: var(--info); border: 1px solid var(--info); }}
+        .badge.OWASP {{ background: #FFA500; color: #fff; border: 1px solid #e69500; }}
 
         .result-section {{
             margin-bottom: 1.5rem;

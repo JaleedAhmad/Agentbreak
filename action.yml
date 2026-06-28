@@ -1,0 +1,47 @@
+name: "AgentBreak Security Scan"
+description: "Run AgentBreak AI agent security scanner and fail on findings above threshold"
+inputs:
+  schema:
+    description: "Path to the YAML schema file relative to the repo root"
+    required: false
+  fail-on:
+    description: "Minimum severity to fail on. One of: critical, high, medium, low"
+    required: false
+    default: "high"
+  output-dir:
+    description: "Output directory for reports"
+    required: false
+    default: "agentbreak-report"
+  langgraph:
+    description: "Path to LangGraph Python file, overrides schema if set"
+    required: false
+    default: ""
+
+runs:
+  using: "composite"
+  steps:
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: "3.11"
+        
+    - name: Install AgentBreak
+      shell: bash
+      run: pip install git+https://github.com/JaleedAhmad/Agentbreak.git
+      
+    - name: Run Scan
+      shell: bash
+      continue-on-error: false
+      run: |
+        if [ -n "${{ inputs.langgraph }}" ]; then
+          agentbreak scan --langgraph "${{ inputs.langgraph }}" --output "${{ inputs.output-dir }}" --fail-on "${{ inputs.fail-on }}"
+        else
+          agentbreak scan --schema "${{ inputs.schema }}" --output "${{ inputs.output-dir }}" --fail-on "${{ inputs.fail-on }}"
+        fi
+        
+    - name: Upload Report
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: agentbreak-security-report
+        path: ${{ inputs.output-dir }}

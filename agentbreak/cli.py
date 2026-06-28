@@ -34,7 +34,7 @@ def main():
 @main.command()
 def info():
     """Print AgentBreak version and author info."""
-    click.echo("AgentBreak v1.0.0")
+    click.echo("AgentBreak v0.3.0")
     click.echo("Author: JaleedAhmad")
     click.echo("GitHub: https://github.com/JaleedAhmad/Agentbreak")
 
@@ -50,17 +50,24 @@ def _load_module_from_file(filepath: str):
 @click.option("--schema", type=click.Path(exists=True, dir_okay=False), required=False, help="Path to a YAML/JSON tool schema file")
 @click.option("--langgraph", type=click.Path(exists=True, dir_okay=False), required=False, help="Path to a Python file containing a LangGraph object")
 @click.option("--crewai", type=click.Path(exists=True, dir_okay=False), required=False, help="Path to a Python file containing a CrewAI Crew object")
+@click.option("--autogen", type=click.Path(exists=True, dir_okay=False), required=False, help="Path to a Python file containing an AutoGen agent")
 @click.option("--output", type=click.Path(file_okay=False), default="./agentbreak-report/", help="Output directory (default: ./agentbreak-report/)")
 @click.option("--external-only", is_flag=True, default=False, help="Only trace paths from EXTERNAL sources (skip UNTRUSTED)")
 @click.option("--max-depth", type=int, default=8, help="Max path depth (default: 8)")
 @click.option("--no-html", is_flag=True, default=False, help="Skip HTML report, write JSONL only")
 @click.option("--live", is_flag=True, default=False, help="Enable live execution mode using Groq (requires GROQ_API_KEY)")
 @click.option("--smart-payloads", is_flag=True, default=False, help="Use Gemini to generate context-aware payloads")
-def scan(schema, langgraph, crewai, output, external_only, max_depth, no_html, live, smart_payloads):
+@click.option("--judge", is_flag=True, default=False, help="Use Judge LLM to verify live exploits (requires --live)")
+@click.option("--fail-on", type=click.Choice(['critical', 'high', 'medium', 'low'], case_sensitive=False), default='high', help="Minimum severity to fail on")
+def scan(schema, langgraph, crewai, autogen, output, external_only, max_depth, no_html, live, smart_payloads, judge, fail_on):
     """Scan an agent schema for vulnerabilities."""
-    inputs = [i for i in [schema, langgraph, crewai] if i is not None]
+    if judge and not live:
+        console.print("[bold red]Error:[/] --judge requires --live mode.")
+        sys.exit(1)
+        
+    inputs = [i for i in [schema, langgraph, crewai, autogen] if i is not None]
     if len(inputs) != 1:
-        console.print("[bold red]Error:[/] You must provide exactly one of --schema, --langgraph, or --crewai.")
+        console.print("[bold red]Error:[/] You must provide exactly one of --schema, --langgraph, --crewai, or --autogen.")
         sys.exit(1)
         
     out_dir = Path(output)
@@ -102,6 +109,9 @@ def scan(schema, langgraph, crewai, output, external_only, max_depth, no_html, l
                 sys.exit(1)
                 
             graph = crewai_parser.parse(target_obj)
+        elif autogen:
+            from agentbreak.parsers import autogen_parser
+            graph = autogen_parser.parse(autogen)
     except Exception as e:
         console.print(f"[bold red]Error parsing input:[/] {e}")
         sys.exit(1)
@@ -153,6 +163,11 @@ def scan(schema, langgraph, crewai, output, external_only, max_depth, no_html, l
     if live:
         console.print("[bold]Running executor in live mode (Groq)...[/]")
         results = executor.run(graph, armed_paths, mode="live", backend="groq")
+        if judge:
+            console.print("[bold]Running Judge LLM...[/]")
+            from agentbreak.scanner.judge import judge_exploit
+            for i in range(len(results)):
+                results[i] = judge_exploit(results[i], backend="groq")
     else:
         console.print("[bold]Running executor in mock mode...[/]")
         results = executor.run(graph, armed_paths, mode="mock")
@@ -163,6 +178,8 @@ def scan(schema, langgraph, crewai, output, external_only, max_depth, no_html, l
     res_table.add_column("Payload Name")
     res_table.add_column("Exploited", justify="center")
     res_table.add_column("Severity")
+    if judge:
+        res_table.add_column("Judge Conf", justify="center")
     
     has_critical_or_high = False
     
@@ -173,12 +190,17 @@ def scan(schema, langgraph, crewai, output, external_only, max_depth, no_html, l
         if r.exploited and r.severity in (Severity.CRITICAL, Severity.HIGH):
             has_critical_or_high = True
             
-        res_table.add_row(
+        row = [
             r.attack_path.describe(),
             r.attack_path.payload_name,
             exploited_mark,
             f"[{sev_color}]{r.severity.name}[/]"
-        )
+        ]
+        if judge:
+            conf_str = f"{r.judge_confidence:.2f}" if r.judge_confidence is not None else "N/A"
+            row.append(conf_str)
+            
+        res_table.add_row(*row)
         
     console.print(res_table)
     
@@ -189,10 +211,23 @@ def scan(schema, langgraph, crewai, output, external_only, max_depth, no_html, l
         html_out = out_dir / "agentbreak_report.html"
         HTMLReporter(results).generate(str(html_out))
         
+    from agentbreak.output.compliance_reporter import write_compliance_report
+    comp_path = write_compliance_report(results, out_dir)
+        
     console.print(f"\n[bold green]Report written to {out_dir}[/]")
+    console.print(f"[bold green]Compliance report written to {comp_path}[/]")
     
     # Exit code based on findings
-    if has_critical_or_high:
+    severity_order = {"critical": 4, "high": 3, "medium": 2, "low": 1}
+    fail_threshold = severity_order[fail_on.lower()]
+    
+    should_fail = False
+    for r in results:
+        if r.exploited and severity_order.get(r.severity.name.lower(), 0) >= fail_threshold:
+            should_fail = True
+            break
+            
+    if should_fail:
         sys.exit(1)
     else:
         sys.exit(0)

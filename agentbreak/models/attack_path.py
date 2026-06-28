@@ -35,6 +35,7 @@ class AttackPath:
     path:         list[ToolNode]
     payload:      str            = ""
     payload_name: str            = ""   # human name of the template used
+    owasp_category: str          = ""   # AAAI mapping
 
     @property
     def entry_tool(self) -> Optional[ToolNode]:
@@ -68,6 +69,7 @@ class ExploitResult:
     trace:         list[ToolCallRecord]   = field(default_factory=list)
     evidence:      str                    = ""    # one-line human summary
     mock_mode:     bool                   = True  # True = sandbox, False = live
+    judge_confidence: Optional[float]     = None  # added by Judge LLM
 
     # ── severity auto-assignment ──────────────────────────────────────────────
 
@@ -110,10 +112,12 @@ class ExploitResult:
             "path":        self.attack_path.path_names,
             "payload":     self.attack_path.payload,
             "payload_name": self.attack_path.payload_name,
+            "owasp_category": self.attack_path.owasp_category,
             "exploited":   self.exploited,
             "severity":    self.severity.value,
             "evidence":    self.evidence,
             "mock_mode":   self.mock_mode,
+            "judge_confidence": self.judge_confidence,
             "trace": [
                 {
                     "tool":    r.tool_name,
