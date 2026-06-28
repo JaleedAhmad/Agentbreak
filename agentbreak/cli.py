@@ -70,7 +70,21 @@ def scan(schema, langgraph, crewai, autogen, output, external_only, max_depth, n
         console.print("[bold red]Error:[/] You must provide exactly one of --schema, --langgraph, --crewai, or --autogen.")
         sys.exit(1)
         
-    out_dir = Path(output)
+    out_dir = Path(output).resolve()
+    
+    suspicious = False
+    if str(out_dir) in ("/", "/home"):
+        suspicious = True
+    else:
+        for sys_dir in ["/etc", "/usr", "/bin"]:
+            if str(out_dir) == sys_dir or str(out_dir).startswith(sys_dir + "/"):
+                suspicious = True
+                break
+                
+    if suspicious:
+        console.print("[bold red]Error:[/] Invalid output path: refusing to write to system directory.")
+        sys.exit(1)
+        
     out_dir.mkdir(parents=True, exist_ok=True)
     
     # 1. Parse input
