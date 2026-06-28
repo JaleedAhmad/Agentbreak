@@ -58,7 +58,8 @@ def _load_module_from_file(filepath: str):
 @click.option("--live", is_flag=True, default=False, help="Enable live execution mode using Groq (requires GROQ_API_KEY)")
 @click.option("--smart-payloads", is_flag=True, default=False, help="Use Gemini to generate context-aware payloads")
 @click.option("--judge", is_flag=True, default=False, help="Use Judge LLM to verify live exploits (requires --live)")
-def scan(schema, langgraph, crewai, autogen, output, external_only, max_depth, no_html, live, smart_payloads, judge):
+@click.option("--fail-on", type=click.Choice(['critical', 'high', 'medium', 'low'], case_sensitive=False), default='high', help="Minimum severity to fail on")
+def scan(schema, langgraph, crewai, autogen, output, external_only, max_depth, no_html, live, smart_payloads, judge, fail_on):
     """Scan an agent schema for vulnerabilities."""
     if judge and not live:
         console.print("[bold red]Error:[/] --judge requires --live mode.")
@@ -217,7 +218,16 @@ def scan(schema, langgraph, crewai, autogen, output, external_only, max_depth, n
     console.print(f"[bold green]Compliance report written to {comp_path}[/]")
     
     # Exit code based on findings
-    if has_critical_or_high:
+    severity_order = {"critical": 4, "high": 3, "medium": 2, "low": 1}
+    fail_threshold = severity_order[fail_on.lower()]
+    
+    should_fail = False
+    for r in results:
+        if r.exploited and severity_order.get(r.severity.name.lower(), 0) >= fail_threshold:
+            should_fail = True
+            break
+            
+    if should_fail:
         sys.exit(1)
     else:
         sys.exit(0)
