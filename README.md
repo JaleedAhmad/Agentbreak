@@ -1,6 +1,6 @@
 # AgentBreak
 
-![Release](https://img.shields.io/github/v/release/JaleedAhmad/Agentbreak?color=blue) ![Python](https://img.shields.io/badge/Python-3.10%2B-blue?logo=python&logoColor=white) ![Security](https://img.shields.io/badge/Security-Red--Teaming-red) ![Agents](https://img.shields.io/badge/Agents-Multi--Agent-purple) ![Frameworks](https://img.shields.io/badge/Frameworks-LangGraph%20%7C%20CrewAI-orange) ![LLMs](https://img.shields.io/badge/LLMs-Groq%20%7C%20Gemini-orange) ![License](https://img.shields.io/badge/License-MIT-brightgreen)
+[![CI](https://github.com/JaleedAhmad/Agentbreak/actions/workflows/agentbreak.yml/badge.svg)](https://github.com/JaleedAhmad/Agentbreak/actions) ![Release](https://img.shields.io/github/v/release/JaleedAhmad/Agentbreak?color=blue) ![Python](https://img.shields.io/badge/Python-3.10%2B-blue?logo=python&logoColor=white) ![Security](https://img.shields.io/badge/Security-Red--Teaming-red) ![Agents](https://img.shields.io/badge/Agents-Multi--Agent-purple) ![Frameworks](https://img.shields.io/badge/Frameworks-LangGraph%20%7C%20CrewAI%20%7C%20AutoGen-orange) ![LLMs](https://img.shields.io/badge/LLMs-Groq%20%7C%20Gemini-orange) ![License](https://img.shields.io/badge/License-MIT-brightgreen)
 
 Workflow-level security scanner for multi-agent AI systems. *(Tested & Verified on Ubuntu)*
 
