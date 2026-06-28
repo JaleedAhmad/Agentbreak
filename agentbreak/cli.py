@@ -50,17 +50,18 @@ def _load_module_from_file(filepath: str):
 @click.option("--schema", type=click.Path(exists=True, dir_okay=False), required=False, help="Path to a YAML/JSON tool schema file")
 @click.option("--langgraph", type=click.Path(exists=True, dir_okay=False), required=False, help="Path to a Python file containing a LangGraph object")
 @click.option("--crewai", type=click.Path(exists=True, dir_okay=False), required=False, help="Path to a Python file containing a CrewAI Crew object")
+@click.option("--autogen", type=click.Path(exists=True, dir_okay=False), required=False, help="Path to a Python file containing an AutoGen agent")
 @click.option("--output", type=click.Path(file_okay=False), default="./agentbreak-report/", help="Output directory (default: ./agentbreak-report/)")
 @click.option("--external-only", is_flag=True, default=False, help="Only trace paths from EXTERNAL sources (skip UNTRUSTED)")
 @click.option("--max-depth", type=int, default=8, help="Max path depth (default: 8)")
 @click.option("--no-html", is_flag=True, default=False, help="Skip HTML report, write JSONL only")
 @click.option("--live", is_flag=True, default=False, help="Enable live execution mode using Groq (requires GROQ_API_KEY)")
 @click.option("--smart-payloads", is_flag=True, default=False, help="Use Gemini to generate context-aware payloads")
-def scan(schema, langgraph, crewai, output, external_only, max_depth, no_html, live, smart_payloads):
+def scan(schema, langgraph, crewai, autogen, output, external_only, max_depth, no_html, live, smart_payloads):
     """Scan an agent schema for vulnerabilities."""
-    inputs = [i for i in [schema, langgraph, crewai] if i is not None]
+    inputs = [i for i in [schema, langgraph, crewai, autogen] if i is not None]
     if len(inputs) != 1:
-        console.print("[bold red]Error:[/] You must provide exactly one of --schema, --langgraph, or --crewai.")
+        console.print("[bold red]Error:[/] You must provide exactly one of --schema, --langgraph, --crewai, or --autogen.")
         sys.exit(1)
         
     out_dir = Path(output)
@@ -102,6 +103,9 @@ def scan(schema, langgraph, crewai, output, external_only, max_depth, no_html, l
                 sys.exit(1)
                 
             graph = crewai_parser.parse(target_obj)
+        elif autogen:
+            from agentbreak.parsers import autogen_parser
+            graph = autogen_parser.parse(autogen)
     except Exception as e:
         console.print(f"[bold red]Error parsing input:[/] {e}")
         sys.exit(1)

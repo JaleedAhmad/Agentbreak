@@ -237,3 +237,29 @@ def test_cli_crewai_no_object():
     assert result.exit_code == 1
     assert "no crew object found" in result.output.lower()
     os.unlink(f.name)
+
+
+def test_autogen_parser_mock():
+    from agentbreak.parsers.autogen_parser import _parse_agents
+    
+    def fetch_user_data(user_id: int):
+        """Fetch user data from the web API."""
+        pass
+        
+    class MockConversableAgent:
+        pass
+        
+    agent = MockConversableAgent()
+    agent.name = "DataAgent"
+    agent.system_message = "You are a helpful assistant."
+    agent.description = ""
+    agent._function_map = {
+        "fetch_user_data": fetch_user_data
+    }
+    
+    graph = _parse_agents([agent], name="mock_autogen")
+    
+    assert len(graph.nodes) == 1
+    node = graph.nodes["DataAgent_fetch_user_data"]
+    assert node.input_trust == TrustLevel.EXTERNAL
+    assert SinkType.API_CALL in node.sinks
