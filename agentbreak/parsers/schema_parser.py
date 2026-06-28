@@ -145,6 +145,8 @@ def parse(path: Union[str, Path]) -> ToolGraph:
     FileNotFoundError, SchemaParseError
     """
     raw = _load_raw(path)
+    if not raw:
+        raise SchemaParseError("Schema file is empty or invalid.")
 
     graph = ToolGraph(meta=raw.get("meta", {}))
 
