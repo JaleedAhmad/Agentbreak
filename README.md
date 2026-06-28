@@ -155,7 +155,16 @@ docker build -t agentbreak-api .
 docker run -p 8080:8080 agentbreak-api
 ```
 
-> **Note on LangGraph Dynamic Imports:** The `/scan/langgraph` API endpoint requires uploaded Python files to be self-contained. If your LangGraph agent relies on local relative module imports, the API will fail to load it dynamically because those related files are not transmitted in the single-file HTTP upload.
+### API Security Configuration
+
+The Hosted API includes built-in security features enabled via environment variables:
+
+- **Authentication:** Set `AGENTBREAK_API_KEY=your-secret-key` to require an `X-API-Key` header on all `/scan` requests. If unset, the API runs unauthenticated (not recommended for production).
+- **CORS:** Set `AGENTBREAK_CORS_ORIGINS=https://yourdomain.com` to restrict cross-origin requests. Defaults to disabled if unset.
+- **Rate Limiting:** Automatically enforces a maximum of 10 requests per minute per IP.
+- **Size Limits:** Automatically rejects scan payloads larger than 1MB.
+
+> **Note:** The `/scan/langgraph` endpoint was removed in `v0.3.1` as arbitrary Python execution is unsafe in a hosted context. Use the CLI `--langgraph` flag directly for testing Python source files locally.
 
 ---
 
@@ -226,7 +235,7 @@ edges:
 
 ## Roadmap
 
-V3 is complete and available in `v0.3.0`. Active development on V4 will take place on the `v4-dev` branch.
+V3 is complete and available in `v0.3.1` (including the latest API security hardening). Active development on V4 will take place on the `v4-dev` branch.
 
 **V3 — CI/CD Integration and Compliance (Complete):**
 Adds a pre-built GitHub Actions workflow that fails pipelines on HIGH or CRITICAL findings, a Judge LLM that produces structured verdicts on each exploit trace, OWASP Agentic Top 10 mapping with PDF compliance reports, a hosted scan API via FastAPI, and AutoGen parser support.
