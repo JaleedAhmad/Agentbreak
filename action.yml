@@ -1,5 +1,8 @@
 name: "AgentBreak Security Scan"
-description: "Run AgentBreak AI agent security scanner and fail on findings above threshold"
+description: "Workflow-level static scanner for multi-agent AI systems. Detects cross-tool prompt injection attack chains."
+branding:
+  icon: shield
+  color: orange
 inputs:
   schema:
     description: "Path to the YAML schema file relative to the repo root"
