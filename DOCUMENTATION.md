@@ -1,7 +1,7 @@
 # AgentBreak — Technical Documentation
 
-**Version:** 0.3.0  
-**Status:** V3 complete, v0.3.0 released  
+**Version:** 0.3.1  
+**Status:** V3 complete, v0.3.1 security patch released, V4 in design  
 **Repository:** https://github.com/JaleedAhmad/Agentbreak  
 **Author:** Jaleed Ahmad  
 **Last updated:** June 2026
@@ -176,7 +176,7 @@ agentbreak/                        ← repo root
 ├── tests/
 │   ├── __init__.py
 │   ├── conftest.py                ← pytest fixtures
-│   └── test_agentbreak.py         ← 16 tests covering full pipeline
+│   └── test_agentbreak.py         ← 27 tests covering full pipeline
 ├── action.yml                     ← GitHub Actions composite action
 ├── Dockerfile                     ← Hosted API container definition
 ├── .dockerignore                  ← Docker build exclusions
@@ -666,7 +666,7 @@ Used when no template matches the specific source/sink combination. Generic syst
 
 ## 12. Test Suite
 
-16 tests in `tests/test_agentbreak.py`, all passing. Run with:
+27 tests in `tests/test_agentbreak.py` and `tests/test_security.py`, all passing. Run with:
 
 ```bash
 pytest tests/ -v
@@ -795,6 +795,17 @@ Everything in this section exists, is tested, and is pushed to the repository.
 - **GitHub Actions Integration:** Composite action (`action.yml`) and sample workflow (`.github/workflows/agentbreak.yml`)
 - **Hosted Scan API:** FastAPI server (`agentbreak/api/main.py`) with `Dockerfile`
 
+**V3.1 Security Patch:**
+- YAML safe_load audit confirmed across `schema_parser.py` and `api/main.py`
+- HTML reporter XSS escaping via `html.escape()` on all user-controlled output strings
+- Path traversal protection on `--output` flag blocking system-critical directories
+- API authentication via `X-API-Key` header and `AGENTBREAK_API_KEY` environment variable
+- In-memory sliding window rate limiting at 10 requests per minute per IP
+- `MaxBodySizeMiddleware` enforcing 1MB upload limit
+- CORS hardened via `AGENTBREAK_CORS_ORIGINS` environment variable
+- `/scan/langgraph` endpoint removed due to RCE risk in hosted context
+- 11 new adversarial and API security tests bringing total test count to 27
+
 ---
 
 ## 15. What Has Not Been Built Yet
@@ -804,6 +815,7 @@ Everything in this section exists, is tested, and is pushed to the repository.
 - **PyPI publication** — the package is not on PyPI. Install via git URL only.
 - **Report diffing** — no ability to compare two scan reports to detect regressions.
 - **Weasyprint PDF Generation (Known Gap)** — requires system-level Cairo/Pango dependencies. PDF output degrades gracefully to Markdown if `weasyprint` is unavailable.
+- **LangGraph API Scan (Known Gap)** — the `/scan/langgraph` endpoint was removed from the API for security reasons. LangGraph agent scanning is available via the CLI only using `--langgraph`.
 
 ---
 
@@ -811,19 +823,21 @@ Everything in this section exists, is tested, and is pushed to the repository.
 
 
 
-### V4 — Web UI & Ecosystem Expansion
+### V4 — Distribution, Integrations, and Ecosystem
 
-**PyPI Publication:**
-Publish AgentBreak to the official Python Package Index for standard `pip install agentbreak` execution.
+**PyPI publication:** Publish agentbreak to PyPI so users can install with `pip install agentbreak` instead of the git URL. Requires a clean pyproject.toml, a PyPI API token, and a GitHub Actions release workflow using twine or the PyPI trusted publisher mechanism. Once on PyPI, the action.yml install step simplifies to `pip install agentbreak==0.4.0`.
 
-**Report Diffing:**
-Introduce the ability to compare two scan reports and explicitly highlight regressions.
+**SARIF output format:** Emit a .sarif file alongside the existing JSONL and HTML reports. SARIF is the industry-standard static analysis output format natively understood by GitHub — findings appear directly in the repository's Security tab alongside CodeQL and Dependabot alerts without any additional configuration. Add `--sarif` flag to the scan command and a `sarif_reporter.py` in `agentbreak/output/`.
 
-**Hosted Web UI:**
-A frontend interface on top of the Hosted API for visual drag-and-drop schema testing.
+**Report diffing:** Add an `agentbreak diff` command that accepts two JSONL report paths and produces a diff report showing new findings introduced, findings resolved, and severity changes between the two runs. This enables regression detection in CI — fail the build only when new HIGH or CRITICAL findings are introduced by a PR, not when existing known findings are present.
 
-**Swagger API Docs:**
-Auto-expose the OpenAPI schema from the FastAPI app.
+**Web UI frontend:** A React single-page application that wraps the hosted API. Accepts YAML schema upload via drag-and-drop, displays the scan results as an interactive findings table with filtering by severity and OWASP category, and renders the attack path graph visually. Deployable to Vercel. Follows the same pattern as the Neural Forensics and AuraBeat frontends.
+
+**Swagger UI hardening:** The FastAPI app already auto-generates OpenAPI docs at `/docs`. In V4 gate the `/docs` and `/redoc` endpoints behind the same `X-API-Key` authentication as the scan endpoints so the API surface is not publicly browsable in production deployments.
+
+**Additional framework parsers:** Add parsers for Microsoft Semantic Kernel (`KernelFunction` and `KernelPlugin` pattern), Haystack (deepset) Pipeline and Component pattern, and AutoGen 0.3.x which broke the `ConversableAgent` API from the 0.2.x parser built in V3. Each follows the same parser interface: accept a Python source file path, return a ToolGraph.
+
+**OpenTelemetry export:** Add an optional `--otel` flag that exports scan traces as OpenTelemetry spans to a configurable OTLP endpoint. Each tool call in the trace becomes a span with attributes for trust level, sink type, payload name, and severity. Enables AgentBreak scan results to appear in Grafana, Datadog, Jaeger, or any OTLP-compatible observability platform.
 
 ---
 
