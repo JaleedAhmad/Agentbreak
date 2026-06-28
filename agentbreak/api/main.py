@@ -4,24 +4,60 @@ import uuid
 import time
 import tempfile
 from typing import Optional
+from collections import defaultdict
 
-from fastapi import FastAPI, UploadFile, File, Form, HTTPException
+from fastapi import FastAPI, UploadFile, File, Form, HTTPException, Depends, Request, Header
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 
 from agentbreak.parsers import schema_parser, langgraph_parser
 from agentbreak.scanner import path_finder, payload_generator, executor
 
+class MaxBodySizeMiddleware:
+    def __init__(self, app):
+        self.app = app
+        
+    async def __call__(self, scope, receive, send):
+        if scope["type"] == "http":
+            headers = dict(scope.get("headers", []))
+            content_length = headers.get(b"content-length")
+            if content_length:
+                try:
+                    length = int(content_length)
+                    if length > 1048576:
+                        await send({
+                            "type": "http.response.start",
+                            "status": 413,
+                            "headers": [(b"content-type", b"application/json")]
+                        })
+                        await send({
+                            "type": "http.response.body",
+                            "body": b'{"detail": "Request body too large \\u2014 maximum allowed size is 1MB"}'
+                        })
+                        return
+                except ValueError:
+                    pass
+        await self.app(scope, receive, send)
+
+origins = [o for o in os.environ.get("AGENTBREAK_CORS_ORIGINS", "").split(",") if o]
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     print("AgentBreak API v0.3.0 ready")
+    if "AGENTBREAK_API_KEY" not in os.environ:
+        print("WARNING: AGENTBREAK_API_KEY not set — API is running without authentication. Set this variable in production.")
+    if not origins:
+        print("CORS is disabled entirely.")
+    else:
+        print(f"CORS origins allowed: {origins}")
     yield
 
 app = FastAPI(title="AgentBreak API", lifespan=lifespan)
-
+app.add_middleware(MaxBodySizeMiddleware)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=origins,
+    allow_origin_regex=None,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -77,7 +113,28 @@ def _run_pipeline(graph, options_dict):
     }
 
 
-@app.post("/scan")
+async def verify_api_key(x_api_key: Optional[str] = Header(None)):
+    env_key = os.environ.get("AGENTBREAK_API_KEY")
+    if env_key is None:
+        return None
+    if x_api_key != env_key:
+        raise HTTPException(status_code=401, detail="Invalid or missing API key.")
+    return x_api_key
+
+_request_times: dict[str, list[float]] = defaultdict(list)
+
+async def rate_limit(request: Request):
+    ip = request.client.host if request.client else "unknown"
+    current_time = time.time()
+    
+    _request_times[ip] = [t for t in _request_times[ip] if current_time - t <= 60]
+    
+    if len(_request_times[ip]) >= 10:
+        raise HTTPException(status_code=429, detail="Rate limit exceeded — maximum 10 requests per minute.")
+    
+    _request_times[ip].append(current_time)
+
+@app.post("/scan", dependencies=[Depends(verify_api_key), Depends(rate_limit)])
 async def scan(schema: UploadFile = File(...), options: Optional[str] = Form(None)):
     opts = {}
     if options:
@@ -109,33 +166,4 @@ async def scan(schema: UploadFile = File(...), options: Optional[str] = Form(Non
             os.unlink(tmp_path)
 
 
-@app.post("/scan/langgraph")
-async def scan_langgraph(agent_file: UploadFile = File(...), options: Optional[str] = Form(None)):
-    opts = {}
-    if options:
-        try:
-            opts = json.loads(options)
-        except json.JSONDecodeError:
-            raise HTTPException(status_code=422, detail="options must be valid JSON")
-            
-    content = await agent_file.read()
-    
-    tmp = tempfile.NamedTemporaryFile(suffix=".py", delete=False)
-    tmp_path = tmp.name
-    try:
-        tmp.write(content)
-        tmp.close()
-        
-        try:
-            graph = langgraph_parser.parse(tmp_path)
-        except Exception as e:
-            raise HTTPException(status_code=422, detail=f"Invalid LangGraph schema: {e}")
-            
-        return _run_pipeline(graph, opts)
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Scan error: {e}")
-    finally:
-        if os.path.exists(tmp_path):
-            os.unlink(tmp_path)
+# /scan/langgraph removed in v0.3.1 — arbitrary Python execution is unsafe in a hosted context. Use the CLI directly: agentbreak scan --langgraph path/to/agent.py.
