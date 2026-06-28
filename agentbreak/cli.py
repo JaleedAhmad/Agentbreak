@@ -34,7 +34,7 @@ def main():
 @main.command()
 def info():
     """Print AgentBreak version and author info."""
-    click.echo("AgentBreak v1.0.0")
+    click.echo("AgentBreak v0.3.0")
     click.echo("Author: JaleedAhmad")
     click.echo("GitHub: https://github.com/JaleedAhmad/Agentbreak")
 
